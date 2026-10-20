@@ -36,368 +36,230 @@ Kirigami.Padding {
 
     padding: Kirigami.Units.gridUnit
 
-    contentItem: GridLayout {
-        id: fullComponentLayout
+    // App Store: macOS's app page header. The icon, large; the name, the
+    // description and the author beside it, with the Get button (and ⋯ for
+    // Uninstall); then the strip of facts across the page: ratings, age,
+    // size, developer, licence, version.
+    contentItem: ColumnLayout {
+        spacing: Kirigami.Units.gridUnit * 1.5
 
-        readonly property bool hasMetadata: !fullComponent.isOfflineUpgrade
-        readonly property real effectiveInfoWidth: infoLayout.implicitWidth
-        readonly property real effectiveMetaWidth: hasMetadata ? metaLayout.implicitWidth : 0
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.gridUnit * 1.2
 
-        readonly property bool stackedMode: hasMetadata && (effectiveInfoWidth + effectiveMetaWidth + fullComponentLayout.rowSpacing > width)
-
-        rowSpacing: Kirigami.Units.gridUnit
-        columnSpacing: Kirigami.Units.gridUnit
-        columns: stackedMode || !hasMetadata ? 1 : 2
-        rows: stackedMode ? 2 : 1
-
-        // App info (icon, name, author, rating, install button)
-        ColumnLayout {
-            id: infoLayout
-            Layout.alignment: fullComponentLayout.stackedMode ? Qt.AlignHCenter : Qt.AlignLeft
-
-            spacing: Kirigami.Units.largeSpacing
-
-            // Icon, name, author, rating
-            RowLayout {
-                id: infoIconNameAuthorRatingLayout
-                spacing: Kirigami.Units.gridUnit
-
-                // Icon
-                Kirigami.Icon {
-                    id: appIcon
-                    implicitWidth: Kirigami.Units.iconSizes.huge
-                    implicitHeight: Kirigami.Units.iconSizes.huge
-                    source: fullComponent.application.icon
-                }
-
-                // Name, author, rating
-                ColumnLayout {
-                    spacing: 0
-
-                    // Name
-                    Kirigami.Heading {
-                        Layout.maximumWidth: Math.ceil(implicitWidth)
-                        Layout.fillWidth: true
-
-                        type: Kirigami.Heading.Type.Primary
-                        wrapMode: Text.Wrap
-                        maximumLineCount: 2
-                        elide: Text.ElideRight
-
-                        text: fullComponent.application.name
-                    }
-
-                    // Author or upgrade info, verification
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        spacing: Kirigami.Units.smallSpacing
-
-                        QQC2.Label {
-                            id: appAuthor
-                            // NOTE: Math.ceil(implicitWidth) is more correct
-                            // but causes the layout to break in some cases
-                            Layout.maximumWidth: implicitWidth + 1
-                            Layout.fillWidth: true
-
-                            wrapMode: Text.Wrap
-                            maximumLineCount: 2
-                            elide: Text.ElideRight
-                            visible: text.length > 0
-
-                            text: {
-                                if (fullComponent.isOfflineUpgrade) {
-                                    return fullComponent.application.upgradeText.length > 0 ? fullComponent.application.upgradeText : "";
-                                } else if (fullComponent.application.author.length > 0) {
-                                    return fullComponent.application.author;
-                                } else {
-                                    return i18nc("As in 'this app is made by an unknown author'", "Unknown author");
-                                }
-                            }
-                        }
-
-                        Kirigami.ContextualHelpButton {
-                            id: appVerification
-                            Layout.fillHeight: true
-                            Layout.maximumHeight: appAuthor.height
-
-                            visible: toolTipText.length > 0
-                            icon.name: fullComponent.application.verifiedIconName
-                            toolTipText: fullComponent.application.verifiedMessage
-
-                            transform: Translate {
-                                // NOTE: Keeps us nice and tight with the actual end of
-                                // the text (where a large word is potentially wrapped)
-                                // without affecting layout
-                                x: -Math.floor(appAuthor.width - appAuthor.paintedWidth)
-                            }
-                        }
-                    }
-
-                    // Rating
-                    RowLayout {
-                        visible: !fullComponent.isTechnicalPackage
-
-                        Rating {
-                            value: fullComponent.application.rating.rating
-                            starSize: appAuthor.font.pointSize
-                            precision: Rating.Precision.HalfStar
-                        }
-
-                        QQC2.Label {
-                            text: fullComponent.application.rating ? i18ncp("@info as in the number of ratings an application has", "%1 rating", "%1 ratings", fullComponent.application.rating.ratingCount) : i18nc("@info", "No ratings yet")
-                        }
-                    }
-                }
+            Kirigami.Icon {
+                id: appIcon
+                Layout.alignment: Qt.AlignTop
+                implicitWidth: Kirigami.Units.gridUnit * 7
+                implicitHeight: implicitWidth
+                source: fullComponent.application.icon
             }
 
-            // Install button
-            RowLayout {
-                spacing: Kirigami.Units.gridUnit
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                spacing: 2
 
-                Item {
-                    implicitWidth: appIcon.width
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    text: fullComponent.application.name
+                    font.weight: Font.Bold
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                }
+                QQC2.Label {
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: fullComponent.isOfflineUpgrade ? fullComponent.application.upgradeText : fullComponent.application.comment
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.15
+                    opacity: 0.6
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                }
+                RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
+                    visible: !fullComponent.isOfflineUpgrade
+                    QQC2.Label {
+                        text: fullComponent.application.author.length > 0 ? fullComponent.application.author
+                            : i18nc("As in 'this app is made by an unknown author'", "Unknown author")
+                        color: Kirigami.Theme.focusColor
+                        elide: Text.ElideRight
+                        textFormat: Text.PlainText
+                    }
+                    Kirigami.ContextualHelpButton {
+                        visible: toolTipText.length > 0
+                        icon.name: fullComponent.application.verifiedIconName
+                        toolTipText: fullComponent.application.verifiedMessage
+                    }
                 }
 
-                InstallApplicationButton {
-                    application: fullComponent.application
-                    buttonActiveFocusOnTab: true
-                    availableFromOnlySingleSource: fullComponent.availableFromOnlySingleSource
-                    hideInvokeButton: false
+                RowLayout {
+                    Layout.topMargin: Kirigami.Units.largeSpacing
+                    spacing: Kirigami.Units.largeSpacing
+
+                    MacGetButton {
+                        application: fullComponent.application
+                        prominent: true
+                    }
+                    QQC2.Label {
+                        visible: !fullComponent.availableFromOnlySingleSource || fullComponent.application.displayOrigin.length > 0
+                        text: fullComponent.application.displayOrigin
+                        font: Kirigami.Theme.smallFont
+                        opacity: 0.55
+                    }
+                    // ⋯: what macOS keeps out of the way.
+                    QQC2.ToolButton {
+                        visible: fullComponent.application.isInstalled && fullComponent.application.isRemovable
+                        icon.name: "overflow-menu"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: i18nc("@action:button more actions", "More")
+                        onClicked: moreMenu.popup()
+                        QQC2.Menu {
+                            id: moreMenu
+                            QQC2.MenuItem {
+                                text: i18nc("@action:inmenu", "Uninstall")
+                                icon.name: "edit-delete"
+                                onTriggered: Discover.ResourcesModel.removeApplication(fullComponent.application)
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // Metadata (version, size, licenses, content rating)
-        GridLayout {
-            id: metaLayout
-            Layout.alignment: fullComponentLayout.stackedMode ? Qt.AlignHCenter : Qt.AlignRight
-
-            readonly property real labelsWidth: Math.max(appVersionLabel.width,
-                                                         appSizeLabel.width,
-                                                         appLicensesLabel.width,
-                                                         appContentRatingLabel.width)
-
-            // Not using Kirigami.FormLayout here because we never
-            // want mobile mode and we want control over spacing
-
-            columnSpacing: Kirigami.Units.smallSpacing
-            rowSpacing: 0
-            columns: 2
-            rows: Math.ceil(metaLayout.visibleChildren.count / 2)
-
-            // Not relevant to offline updates
+        // The facts, across the page, between hairlines.
+        RowLayout {
+            Layout.fillWidth: true
             visible: !fullComponent.isOfflineUpgrade
+            spacing: 0
 
-            // Version
-            QQC2.Label {
-                id: appVersionLabel
-                Layout.alignment: Qt.AlignRight | Qt.AlignTop
-                text: i18nc("@info", "Version:")
-                visible: fullComponent.application.versionString.length > 0
-            }
+            component Fact: MouseArea {
+                id: fact
+                property string label
+                property string value
+                property string detail
+                // An icon in place of the value (the developer's).
+                property string glyph
+                property bool first: false
+                property var action: null
 
-            QQC2.Label {
-                Layout.maximumWidth: Math.ceil(implicitWidth)
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
-                text: fullComponent.application.versionString
-                visible: fullComponent.application.versionString.length > 0
-            }
+                Layout.preferredWidth: 1
+                implicitHeight: factColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+                visible: value.length > 0 || glyph.length > 0
+                cursorShape: action ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: if (action) action()
 
-            // Size
-            QQC2.Label {
-                id: appSizeLabel
-                Layout.alignment: Qt.AlignRight | Qt.AlignTop
-                text: i18n("Size:")
-                visible: fullComponent.application.sizeDescription.length > 0
-            }
-
-            QQC2.BusyIndicator {
-                implicitWidth: Kirigami.Units.iconSizes.sizeForLabels
-                implicitHeight: Kirigami.Units.iconSizes.sizeForLabels
-                visible: !appSize.visible && fullComponent.application.sizeDescription.length > 0
-                running: visible
-            }
-
-            QQC2.Label {
-                id: appSize
-                Layout.maximumWidth: Math.ceil(implicitWidth)
-                Layout.fillWidth: true
-
-                wrapMode: Text.Wrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
-                visible: fullComponent.application.size != 0 && fullComponent.application.sizeDescription.length > 0
-
-                text: fullComponent.application.sizeDescription
-            }
-
-            // Licenses
-            QQC2.Label {
-                id: appLicensesLabel
-                Layout.alignment: Qt.AlignRight | Qt.AlignTop
-                text: i18ncp("@info", "License:", "Licenses:", fullComponent.application.licenses.length)
-            }
-
-            ColumnLayout {
-                id: appLicenseLayout
-
-                spacing: Kirigami.Units.smallSpacing
-
-                RowLayout {
-                    spacing: Kirigami.Units.smallSpacing
-
-                    visible: fullComponent.application.licenses.length === 0
-
+                Rectangle {
+                    visible: !fact.first
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1
+                    height: parent.height * 0.6
+                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+                }
+                ColumnLayout {
+                    id: factColumn
+                    anchors.centerIn: parent
+                    width: parent.width - Kirigami.Units.largeSpacing * 2
+                    spacing: 1
                     QQC2.Label {
-                        id: appLicenseUnknownLabel
-                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: fact.label
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        font.weight: Font.DemiBold
+                        font.capitalization: Font.AllUppercase
+                        opacity: 0.5
                         elide: Text.ElideRight
-
-                        color: fullComponent.colorForLicenseType("unknown")
-                        text: i18nc("The app does not provide any licenses", "Unknown")
                     }
-
-                    QQC2.Button {
-                        implicitHeight: appLicenseUnknownLabel.height
-
-                        icon.name: "help-contextual-symbolic"
-                        text: i18nc("@info:tooltip for button opening license type description", "What does this mean?")
-                        display: QQC2.AbstractButton.IconOnly
-                        flat: true
-
-                        QQC2.ToolTip.text: text
-                        QQC2.ToolTip.visible: hovered || activeFocus
-                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-
-                        onClicked: fullComponent.openLicenseDetailsDialog("unknown")
+                    Kirigami.Icon {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: fact.glyph.length > 0
+                        implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                        implicitHeight: implicitWidth
+                        source: fact.glyph
+                        isMask: true
+                        color: Kirigami.Theme.textColor
+                        opacity: 0.75
                     }
-                }
-
-                Repeater {
-                    visible: fullComponent.application.licenses.length > 0
-                    model: fullComponent.application.licenses.slice(0, 2)
-                    delegate: RowLayout {
-                        id: delegate
-
-                        required property var modelData
-                        required property int index
-
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Kirigami.UrlButton {
-                            id: licenseDelegateUrlButton
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: Math.min(implicitWidth + 1, fullComponentLayout.width
-                                                                             - metaLayout.labelsWidth
-                                                                             - (licenseDelegateButton.visible ? licenseDelegateButton.width : 0))
-
-                            // Override some things to keep the right appearance for non-free licenses with no URL
-                            readonly property bool hasUrl: url !== ""
-                            enabled: true
-                            font.underline: hasUrl
-                            acceptedButtons: hasUrl ? Qt.LeftButton : Qt.NoButton
-                            mouseArea.cursorShape: hasUrl ? Qt.PointingHandCursor : undefined
-
-                            horizontalAlignment: Text.AlignLeft
-                            wrapMode: Text.Wrap
-                            maximumLineCount: 3
-                            elide: Text.ElideRight
-                            normalColor: fullComponent.colorForLicenseType(delegate.modelData.licenseType)
-
-                            text: delegate.modelData.name
-                            url: delegate.modelData.url
-                        }
-
-                        // Button to open the license details dialog
-                        QQC2.Button {
-                            id: licenseDelegateButton
-                            implicitHeight: licenseDelegateUrlButton.height
-
-                            visible: delegate.modelData.licenseType === "unknown"
-                                     || delegate.modelData.licenseType === "non-free"
-                                     || delegate.modelData.licenseType === "proprietary"
-
-                            icon.name: "help-contextual-symbolic"
-                            text: i18nc("@info:tooltip for button opening license type description", "What does this mean?")
-                            display: QQC2.AbstractButton.IconOnly
-                            flat: true
-
-                            QQC2.ToolTip.text: text
-                            QQC2.ToolTip.visible: hovered || activeFocus
-                            QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-
-                            transform: Translate {
-                                // NOTE: Keeps us nice and tight with the actual end of
-                                // the text (where a large word is potentially wrapped)
-                                // without affecting layout
-                                x: -Math.floor(licenseDelegateUrlButton.width - licenseDelegateUrlButton.paintedWidth)
-                            }
-
-                            onClicked: fullComponent.openLicenseDetailsDialog(delegate.modelData.licenseType)
-                        }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        visible: fact.glyph.length === 0
+                        horizontalAlignment: Text.AlignHCenter
+                        text: fact.value
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.35
+                        font.weight: Font.Bold
+                        opacity: 0.75
+                        elide: Text.ElideRight
                     }
-                }
-
-                // "See All licenses" link, in case there are a lot of them
-                Kirigami.LinkButton {
-                    visible: application.licenses.length > 3
-                    text: i18nc("Show all licenses of the package", "All licenses…")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignTop
-                    elide: Text.ElideRight
-                    onClicked: fullComponent.openAllLicensesSheet()
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: fact.detail
+                        font: Kirigami.Theme.smallFont
+                        opacity: 0.5
+                        elide: Text.ElideRight
+                    }
                 }
             }
 
-            // Content rating
-            QQC2.Label {
-                id: appContentRatingLabel
-                Layout.alignment: Qt.AlignRight | Qt.AlignTop
+            Fact {
+                first: true
                 visible: !fullComponent.isTechnicalPackage
-                text: i18nc("@info The app is suitable for people of the following ages or older", "Ages:")
+                label: fullComponent.application.rating && fullComponent.application.rating.ratingCount > 0
+                    ? i18ncp("@label number of ratings", "%1 Rating", "%1 Ratings", fullComponent.application.rating.ratingCount)
+                    : i18nc("@label", "Ratings")
+                value: fullComponent.application.rating && fullComponent.application.rating.ratingCount > 0
+                    ? (fullComponent.application.rating.rating / 2).toFixed(1) : "–"
+                detail: {
+                    const r = fullComponent.application.rating ? Math.round(fullComponent.application.rating.rating / 2) : 0;
+                    return r > 0 ? "★".repeat(r) + "☆".repeat(5 - r) : i18nc("@info", "Not enough ratings");
+                }
             }
-
-            RowLayout {
-                Layout.fillWidth: true
-
+            Fact {
                 visible: !fullComponent.isTechnicalPackage
-
-                spacing: Kirigami.Units.smallSpacing
-
-                QQC2.Label {
-                    id: appContentRating
-                    Layout.maximumWidth: Math.ceil(implicitWidth)
-                    Layout.fillWidth: true
-
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 2
-                    elide: Text.ElideRight
-
-                    text: application.contentRatingMinimumAge === 0 ? i18nc("@item As in, the app is suitable for everyone", "Everyone")
-                                                                    : i18nc("@item %1 is a person's age in number of years",
-                                                                            "%1+", fullComponent.application.contentRatingMinimumAge)
+                label: i18nc("@label the app's content rating", "Age")
+                value: fullComponent.application.contentRatingMinimumAge === 0 ? i18nc("@item suitable for everyone", "4+")
+                     : i18nc("@item %1 is an age", "%1+", fullComponent.application.contentRatingMinimumAge)
+                detail: i18nc("@label under an age", "Years Old")
+                action: fullComponent.application.contentRatingDescription.length > 0 ? () => fullComponent.openContentRatingDialog() : null
+            }
+            Fact {
+                label: i18nc("@label", "Size")
+                value: fullComponent.application.sizeDescription
+                detail: fullComponent.application.isInstalled ? i18nc("@label", "Installed") : i18nc("@label", "Download")
+            }
+            Fact {
+                label: i18nc("@label", "Developer")
+                glyph: "user-symbolic"
+                detail: fullComponent.application.author
+                visible: fullComponent.application.author.length > 0
+            }
+            Fact {
+                readonly property var licence: fullComponent.application.licenses.length > 0 ? fullComponent.application.licenses[0] : null
+                label: i18nc("@label", "License")
+                value: licence ? licence.name : i18nc("The app does not provide any licenses", "Unknown")
+                detail: licence ? (licence.licenseType === "free" ? i18nc("@label free software", "Free Software")
+                                 : licence.licenseType === "proprietary" ? i18nc("@label", "Proprietary") : i18nc("@label", "Non-free"))
+                                : ""
+                action: () => {
+                    if (fullComponent.application.licenses.length > 1) {
+                        fullComponent.openAllLicensesSheet();
+                    } else if (!licence || licence.licenseType !== "free") {
+                        fullComponent.openLicenseDetailsDialog(licence ? licence.licenseType : "unknown");
+                    } else if (licence.url) {
+                        Qt.openUrlExternally(licence.url);
+                    }
                 }
-
-                QQC2.Button {
-                    implicitHeight: appContentRating.height
-
-                    visible: fullComponent.application.contentRatingDescription.length > 0
-
-                    icon.name: "help-contextual-symbolic"
-                    text: i18nc("@action:button See content rating details", "See details")
-                    display: QQC2.AbstractButton.IconOnly
-                    flat: true
-
-                    QQC2.ToolTip.text: text
-                    QQC2.ToolTip.visible: hovered || activeFocus
-                    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-
-                    onClicked: fullComponent.openContentRatingDialog()
-                }
+            }
+            Fact {
+                label: i18nc("@label", "Version")
+                value: fullComponent.application.versionString
             }
         }
     }

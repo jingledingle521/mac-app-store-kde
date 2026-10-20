@@ -2,6 +2,15 @@
 <RCC version="1.0">
  <qresource prefix="/qt/qml/org/kde/discover">
     <file>qml/TopLevelPageData.qml</file>
+    <file>qml/MacSidebar.qml</file>
+    <file>qml/MacSidebarRow.qml</file>
+    <file>qml/MacStoplights.qml</file>
+    <file>qml/MacToolbar.qml</file>
+    <file>qml/MacGetButton.qml</file>
+    <file>qml/MacAppRow.qml</file>
+    <file>qml/MacShelf.qml</file>
+    <file>qml/MacFeatureCard.qml</file>
+    <file>qml/MacCategoriesPage.qml</file>
     <file>qml/ApplicationsListPage.qml</file>
     <file>qml/ApplicationPage.qml</file>
     <file>qml/ApplicationPageStickyHeader.qml</file>

@@ -15,6 +15,12 @@ Kirigami.ScrollablePage {
 
     property bool compact: root.width < Kirigami.Units.gridUnit * 28 || !applicationWindow().wideScreen
 
+    // App Store: the window paints the content's background, inside its
+    // rounded corners; pages have none of their own.
+    background: null
+    // macOS's margins around a page's content.
+    horizontalPadding: Kirigami.Units.gridUnit * 1.5
+
     Shortcut {
         sequences: [ StandardKey.MoveToNextPage ]
         enabled: root.isCurrentPage

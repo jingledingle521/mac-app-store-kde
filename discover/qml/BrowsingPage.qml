@@ -17,7 +17,7 @@ import org.kde.discover.app as DiscoverApp
 DiscoverPage {
     id: page
 
-    title: i18nc("@title:window the name of a top-level 'home' page", "Home")
+    title: i18nc("@title:window the name of a top-level 'home' page", "Discover")
     objectName: "featured"
 
     actions: window.wideScreen ? [ searchAction ] : []
@@ -43,7 +43,7 @@ DiscoverPage {
     }
 
     Loader {
-        active: !featuredModel.isFetching && [featuredModel, popRep, recentlyUpdatedRepeater, gamesRep, devRep].every((model) => model.count === 0)
+        active: !featuredModel.isFetching && featuredModel.count === 0 && popShelf.count === 0
 
         anchors.centerIn: parent
         width: parent.width - (Kirigami.Units.largeSpacing * 4)
@@ -73,86 +73,98 @@ DiscoverPage {
 
     signal clearSearch()
 
-    Kirigami.CardsLayout {
+    // App Store: macOS's Discover page. A large title, a row of large
+    // editorial cards (the featured apps), then shelves of apps with a
+    // See All each.
+    ColumnLayout {
         id: apps
 
-        maximumColumns: 4
-        rowSpacing: page.padding
-        columnSpacing: page.padding
-        maximumColumnWidth: Kirigami.Units.gridUnit * 6
+        readonly property bool ready: !featuredModel.isFetching
+        readonly property int pageSize: 9
+
+        spacing: Kirigami.Units.gridUnit * 1.5
 
         Kirigami.Heading {
-            id: popHeading
-            // Need to undo some the row spacing of the parent layout which looks bad here
-            Layout.bottomMargin: -(apps.rowSpacing / 2)
-            Layout.columnSpan: apps.columns
             Layout.fillWidth: true
-            text: i18nc("@title:group", "Most Popular")
-            wrapMode: Text.Wrap
-            visible: popRep.count > 0 && !featuredModel.isFetching
+            level: 1
+            font.weight: Font.Bold
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2.1
+            text: i18nc("@title the App Store's front page", "Discover")
         }
 
-        Repeater {
-            id: popRep
+        // The featured apps, two to a view, scrolled sideways.
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: Kirigami.Units.gridUnit * 14
+            visible: featuredRep.count > 0 && apps.ready
+
+            ListView {
+                id: featuredRep
+                anchors.fill: parent
+                orientation: ListView.Horizontal
+                spacing: Kirigami.Units.gridUnit
+                snapMode: ListView.SnapToItem
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+                model: featuredModel
+                highlightRangeMode: ListView.StrictlyEnforceRange
+                preferredHighlightBegin: 0
+                preferredHighlightEnd: width
+                highlightMoveDuration: Kirigami.Units.longDuration
+                delegate: MacFeatureCard {
+                    required property var model
+                    application: model.application
+                    width: Math.max(Kirigami.Units.gridUnit * 18, (featuredRep.width - featuredRep.spacing) / 2)
+                    height: featuredRep.height
+                }
+            }
+
+            component Arrow: QQC2.RoundButton {
+                property int step
+                anchors.verticalCenter: parent.verticalCenter
+                width: Kirigami.Units.gridUnit * 1.8
+                height: width
+                icon.name: step > 0 ? "go-next-symbolic" : "go-previous-symbolic"
+                opacity: arrowsHover.hovered ? 1 : 0
+                visible: step > 0 ? featuredRep.currentIndex < featuredRep.count - 1 : featuredRep.currentIndex > 0
+                onClicked: featuredRep.currentIndex = Math.max(0, Math.min(featuredRep.count - 1, featuredRep.currentIndex + step))
+                Behavior on opacity {
+                    NumberAnimation { duration: Kirigami.Units.shortDuration }
+                }
+            }
+            HoverHandler {
+                id: arrowsHover
+            }
+            Arrow {
+                step: -1
+                anchors.left: parent.left
+                anchors.leftMargin: Kirigami.Units.smallSpacing
+            }
+            Arrow {
+                step: 1
+                anchors.right: parent.right
+                anchors.rightMargin: Kirigami.Units.smallSpacing
+            }
+        }
+
+        MacShelf {
+            id: popShelf
+            Layout.fillWidth: true
+            visible: count > 0 && apps.ready
+            title: i18nc("@title:group", "Most Popular")
             model: DiscoverApp.LimitedRowCountProxyModel {
-                pageSize: apps.maximumColumns * 2
+                pageSize: apps.pageSize
                 sourceModel: DiscoverApp.OdrsAppsModel {
-                    // filter: FOSS
                 }
             }
-            delegate: GridApplicationDelegate {
-                visible: !featuredModel.isFetching
-                count: popRep.count
-                columns: apps.columns
-                maxUp: 0
-            }
-            property int numberItemsOnLastRow: (count % apps.columns) || apps.columns
+            seeAll: () => Navigation.openCategory(Discover.CategoryModel.findCategoryByName("All Applications"))
         }
 
-        QQC2.Button {
-            text: i18nc("@action:button", "See More")
-            icon.name: Qt.application.layoutDirection === Qt.LeftToRight ? "go-next-symbolic" : "go-next-rtl-symbolic"
-            Layout.columnSpan: apps.columns
-            // Nicer to have the arrow on the side it's pointing to
-            LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.LeftToRight
-            onClicked: Navigation.openCategory(Discover.CategoryModel.findCategoryByName("All Applications"))
-            visible: popRep.count > 0 && !featuredModel.isFetching
-            Keys.onUpPressed: {
-                var target = this
-                for (var i = 0; i<popRep.numberItemsOnLastRow; i++) {
-                    target = target.nextItemInFocusChain(false)
-                }
-                target.forceActiveFocus(Qt.TabFocusReason)
-            }
-            onFocusChanged: {
-                if (focus) {
-                    page.ensureVisible(this)
-                }
-            }
-        }
-
-        Kirigami.Heading {
-            id: recentlyUpdatedHeading
-            Layout.topMargin: page.padding
-            // Need to undo some the row spacing of the parent layout which looks bad here
-            Layout.bottomMargin: -(apps.rowSpacing / 2)
-            Layout.columnSpan: apps.columns
+        MacShelf {
             Layout.fillWidth: true
-            text: i18nc("@title:group", "Newly Published & Recently Updated")
-            wrapMode: Text.Wrap
-            visible: recentlyUpdatedRepeater.count > 0 && !featuredModel.isFetching
-        }
-
-        Repeater {
-            id: recentlyUpdatedRepeater
+            visible: count > 0 && apps.ready
+            title: i18nc("@title:group", "New & Updated")
             model: recentlyUpdatedModelInstantiator.object
-            delegate: GridApplicationDelegate {
-                numberItemsOnPreviousLastRow: ((popHeading.visible && popRep.numberItemsOnLastRow) || 0)
-                visible: !featuredModel.isFetching
-                count: recentlyUpdatedRepeater.count
-                columns: apps.columns
-            }
-            property int numberItemsOnLastRow: (count % apps.columns) || apps.columns
         }
 
         Instantiator {
@@ -161,7 +173,7 @@ DiscoverPage {
             active: {
                 const backend = Discover.ResourcesModel.currentApplicationBackend;
                 if (!backend) {
-                    return [];
+                    return false;
                 }
                 // TODO: Add packagekit-backend of rolling distros
                 return [
@@ -171,7 +183,7 @@ DiscoverPage {
             }
 
             DiscoverApp.LimitedRowCountProxyModel {
-                pageSize: apps.maximumColumns * 2
+                pageSize: apps.pageSize
                 sourceModel: Discover.ResourcesProxyModel {
                     filteredCategoryName: "All Applications"
                     backendFilter: Discover.ResourcesModel.currentApplicationBackend
@@ -181,142 +193,30 @@ DiscoverPage {
             }
         }
 
-        Kirigami.Heading {
-            id: featuredHeading
-            Layout.topMargin: page.padding
-            // Need to undo some the row spacing of the parent layout which looks bad here
-            Layout.bottomMargin: -(apps.rowSpacing / 2)
-            Layout.columnSpan: apps.columns
-            Layout.fillWidth: true
-            text: i18nc("@title:group", "Editor's Choice")
-            wrapMode: Text.Wrap
-            visible: featuredRep.count > 0 && !featuredModel.isFetching
-        }
-
+        // The themed shelves, as in the sidebar.
         Repeater {
-            id: featuredRep
-            model: featuredModel
-            delegate: GridApplicationDelegate {
-                numberItemsOnPreviousLastRow: ((recentlyUpdatedHeading.visible && recentlyUpdatedRepeater.numberItemsOnLastRow) ||
-                                              (popHeading.visible && popRep.numberItemsOnLastRow) || 0)
-                count: featuredRep.count
-                columns: apps.columns
-                visible: !featuredModel.isFetching
-            }
-            property int numberItemsOnLastRow: (count % apps.columns) || apps.columns
-        }
-
-        Kirigami.Heading {
-            id: gamesHeading
-            Layout.topMargin: page.padding
-            // Need to undo some the row spacing of the parent layout which looks bad here
-            Layout.bottomMargin: -(apps.rowSpacing / 2)
-            Layout.columnSpan: apps.columns
-            Layout.fillWidth: true
-            text: i18nc("@title:group", "Highest-Rated Games")
-            wrapMode: Text.Wrap
-            visible: gamesRep.count > 0 && !featuredModel.isFetching
-        }
-
-        Repeater {
-            id: gamesRep
-            model: DiscoverApp.LimitedRowCountProxyModel {
-                pageSize: apps.maximumColumns
-                sourceModel: Discover.ResourcesProxyModel {
-                    filteredCategoryName: "Games"
-                    backendFilter: Discover.ResourcesModel.currentApplicationBackend
-                    sortRole: Discover.ResourcesProxyModel.SortableRatingRole
-                    sortOrder: Qt.DescendingOrder
+            model: [
+                { title: i18nc("@title:group", "Top Games"), category: "Games" },
+                { title: i18nc("@title:group", "Create"), category: "Graphics" },
+                { title: i18nc("@title:group", "Work"), category: "Office" },
+                { title: i18nc("@title:group", "Developer Tools"), category: "Development" },
+            ]
+            delegate: MacShelf {
+                id: themed
+                required property var modelData
+                Layout.fillWidth: true
+                visible: count > 0 && apps.ready
+                title: modelData.title
+                model: DiscoverApp.LimitedRowCountProxyModel {
+                    pageSize: apps.pageSize
+                    sourceModel: Discover.ResourcesProxyModel {
+                        filteredCategoryName: themed.modelData.category
+                        backendFilter: Discover.ResourcesModel.currentApplicationBackend
+                        sortRole: Discover.ResourcesProxyModel.SortableRatingRole
+                        sortOrder: Qt.DescendingOrder
+                    }
                 }
-            }
-            delegate: GridApplicationDelegate {
-                visible: !featuredModel.isFetching
-                numberItemsOnPreviousLastRow: ((featuredHeading.visible && featuredRep.numberItemsOnLastRow) ||
-                                              (recentlyUpdatedHeading.visible && recentlyUpdatedRepeater.numberItemsOnLastRow ) ||
-                                              (popHeading.visible && popRep.numberItemsOnLastRow) || 0)
-                count: gamesRep.count
-                columns: apps.columns
-                maxDown: 1
-            }
-            property int numberItemsOnLastRow: (count % apps.columns) || apps.columns
-        }
-
-        QQC2.Button {
-            text: i18nc("@action:button", "See More")
-            icon.name: Qt.application.layoutDirection === Qt.LeftToRight ? "go-next-symbolic" : "go-next-rtl-symbolic"
-            Layout.columnSpan: apps.columns
-            // Nicer to have the arrow on the side it's pointing to
-            LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.LeftToRight
-            onClicked: Navigation.openCategory(Discover.CategoryModel.findCategoryByName("Games"))
-            visible: gamesRep.count > 0 && !featuredModel.isFetching
-            Keys.onUpPressed: {
-                var target = this
-                for (var i = 0; i<gamesRep.numberItemsOnLastRow; i++) {
-                    target = target.nextItemInFocusChain(false)
-                }
-                target.forceActiveFocus(Qt.TabFocusReason)
-            }
-            Keys.onDownPressed: nextItemInFocusChain(true).forceActiveFocus(Qt.TabFocusReason)
-            onFocusChanged: {
-                if (focus) {
-                    page.ensureVisible(this)
-                }
-            }
-        }
-
-        Kirigami.Heading {
-            Layout.topMargin: page.padding
-            Layout.columnSpan: apps.columns
-            Layout.fillWidth: true
-            text: i18nc("@title:group", "Highest-Rated Developer Tools")
-            wrapMode: Text.Wrap
-            visible: devRep.count > 0 && !featuredModel.isFetching
-        }
-
-        Repeater {
-            id: devRep
-            model: DiscoverApp.LimitedRowCountProxyModel {
-                pageSize: apps.maximumColumns
-                sourceModel: Discover.ResourcesProxyModel {
-                    filteredCategoryName: "Development"
-                    backendFilter: Discover.ResourcesModel.currentApplicationBackend
-                    sortRole: Discover.ResourcesProxyModel.SortableRatingRole
-                    sortOrder: Qt.DescendingOrder
-                }
-            }
-            delegate: GridApplicationDelegate {
-                visible: !featuredModel.isFetching
-                numberItemsOnPreviousLastRow: ((gamesHeading.visible && gamesRep.numberItemsOnLastRow) ||
-                                              (featuredHeading.visible && featuredRep.numberItemsOnLastRow) ||
-                                              (recentlyUpdatedHeading.visible && recentlyUpdatedRepeater.numberItemsOnLastRow) ||
-                                              (popHeading.visible && popRep.numberItemsOnLastRow) || 0)
-                count: devRep.count
-                columns: apps.columns
-                maxUp: 1
-                maxDown: 1
-            }
-            property int numberItemsOnLastRow: (count % apps.columns) || apps.columns
-        }
-
-        QQC2.Button {
-            text: i18nc("@action:button", "See More")
-            icon.name: Qt.application.layoutDirection === Qt.LeftToRight ? "go-next-symbolic" : "go-next-rtl-symbolic"
-            Layout.columnSpan: apps.columns
-            // Nicer to have the arrow on the side it's pointing to
-            LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.LeftToRight
-            onClicked: Navigation.openCategory(Discover.CategoryModel.findCategoryByName("Development"))
-            visible: devRep.count > 0 && !featuredModel.isFetching
-            Keys.onUpPressed: {
-                var target = this
-                for (var i = 0; i<devRep.numberItemsOnLastRow; i++) {
-                    target = target.nextItemInFocusChain(false)
-                }
-                target.forceActiveFocus(Qt.TabFocusReason)
-            }
-            onFocusChanged: {
-                if (focus) {
-                    page.ensureVisible(this)
-                }
+                seeAll: () => Navigation.openCategory(Discover.CategoryModel.findCategoryByName(themed.modelData.category))
             }
         }
     }

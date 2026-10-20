@@ -116,8 +116,10 @@ int main(int argc, char **argv)
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("plasmadiscover")));
     app.setQuitLockEnabled(false);
     KLocalizedString::setApplicationDomain("plasma-discover");
+    // App Store: macOS's name (the component stays "discover": its settings,
+    // its D-Bus name and its desktop file are Discover's).
     KAboutData about(QStringLiteral("discover"),
-                     i18n("Discover"),
+                     i18n("App Store"),
                      version,
                      i18n("An application explorer"),
                      KAboutLicense::GPL,

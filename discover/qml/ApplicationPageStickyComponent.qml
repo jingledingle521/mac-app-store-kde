@@ -48,11 +48,10 @@ Kirigami.Padding {
             }
         }
 
-        InstallApplicationButton {
+        // App Store: macOS's Get button, in the accent colour.
+        MacGetButton {
             application: stickyComponent.application
-            buttonActiveFocusOnTab: true
-            availableFromOnlySingleSource: stickyComponent.availableFromOnlySingleSource
-            hideInvokeButton: false
+            prominent: true
         }
 
         QQC2.Button {

@@ -262,7 +262,8 @@ DiscoverPage {
             Layout.topMargin: -appInfo.topPadding
 
             flickable: appInfo.flickable
-            color: Kirigami.ColorUtils.tintWithAlpha(Kirigami.Theme.backgroundColor, appImageColorExtractor.dominant, 0.1)
+            // App Store: the page's own background, as macOS.
+            color: Kirigami.Theme.backgroundColor
 
             fullComponent: ApplicationPageFullComponent {
                 application: appInfo.application

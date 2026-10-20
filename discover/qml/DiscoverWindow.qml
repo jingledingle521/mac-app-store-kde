@@ -21,6 +21,7 @@ Kirigami.ApplicationWindow {
     readonly property string topUpdateComp: "UpdatesPage.qml"
     readonly property string topSourcesComp: "SourcesPage.qml"
     readonly property string topAboutComp: "AboutPage.qml"
+    readonly property string topCategoriesComp: "MacCategoriesPage.qml"
 
     objectName: "DiscoverMainWindow"
     title: leftPage?.title ?? ""
@@ -33,9 +34,65 @@ Kirigami.ApplicationWindow {
     minimumWidth: Kirigami.Units.gridUnit * 17
     minimumHeight: Kirigami.Units.gridUnit * 17
 
-    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.ToolBar
-    pageStack.globalToolBar.showNavigationButtons: pageStack.currentIndex === 0 ? Kirigami.ApplicationHeaderStyle.None : Kirigami.ApplicationHeaderStyle.ShowBackButton
+    // App Store: our own toolbar (MacToolbar) instead of Kirigami's.
+    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
     pageStack.columnView.columnResizeMode: Kirigami.ColumnView.SingleColumn
+    pageStack.anchors.topMargin: toolbar.height
+
+    // App Store: macOS's window. No title bar; rounded, with the sidebar's
+    // glass running to the top (StoreChrome: frame, blur, shadow, resizing).
+    DiscoverApp.StoreChrome {
+        id: chrome
+        window: window
+        sidebarWidth: window.globalDrawer ? window.globalDrawer.width * window.globalDrawer.position : 0
+    }
+
+    background: Item {
+        // The content side.
+        Rectangle {
+            Kirigami.Theme.colorSet: Kirigami.Theme.View
+            Kirigami.Theme.inherit: false
+            anchors.fill: parent
+            radius: chrome.radius
+            color: Kirigami.Theme.backgroundColor
+        }
+        // The sidebar's tint (KWin blurs behind it), within the corners.
+        Item {
+            width: chrome.sidebarWidth
+            height: parent.height
+            clip: true
+            Rectangle {
+                width: window.width
+                height: parent.height
+                radius: chrome.radius
+                color: chrome.sidebarColor
+            }
+        }
+        Rectangle {
+            x: chrome.sidebarWidth
+            width: 1
+            height: parent.height
+            visible: chrome.sidebarWidth > 0
+            color: Qt.rgba(0, 0, 0, 0.35)
+        }
+        // A light inner edge around the window, like macOS's border.
+        Rectangle {
+            anchors.fill: parent
+            visible: chrome.radius > 0
+            radius: chrome.radius
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.07)
+        }
+    }
+
+    MacToolbar {
+        id: toolbar
+        z: 2
+        width: parent.width
+        chrome: chrome
+        pageStack: window.pageStack
+    }
     
     readonly property Item leftPage: window.pageStack.depth > 0 ? window.pageStack.get(0) : null
 
@@ -51,7 +108,10 @@ Kirigami.ApplicationWindow {
             messagesSheet.addMessage(i18n("Running as <em>root</em> is discouraged and unnecessary."));
         }
 
-        if (NetworkInformation.reachability !== NetworkInformation.Reachability.Online) {
+        // App Store: only when there's no network at all. A failed
+        // connectivity check ("site only") still downloads fine.
+        if (NetworkInformation.reachability === NetworkInformation.Reachability.Disconnected
+                || NetworkInformation.reachability === NetworkInformation.Reachability.Local) {
             connectionDialog.open();
         }
     }
@@ -196,7 +256,8 @@ Kirigami.ApplicationWindow {
 
     Loader {
         id: footerLoader
-        active: !window.wideScreen
+        // App Store: the sidebar stays, however narrow the window.
+        active: false
         sourceComponent: Kirigami.NavigationTabBar {
             actions: [
                 featuredAction,
@@ -347,7 +408,7 @@ Kirigami.ApplicationWindow {
 
         dialogType: Kirigami.PromptDialog.Warning
 
-        title: i18nc("@title:dialog", "Discover is Offline")
+        title: i18nc("@title:dialog", "App Store is Offline")
         subtitle: i18nc("@info", "Please connect to a network to install applications and update the system.")
 
         standardButtons: Kirigami.Dialog.Ok
@@ -503,8 +564,8 @@ Kirigami.ApplicationWindow {
 
     contextDrawer: Kirigami.ContextDrawer {}
 
-    globalDrawer: DiscoverDrawer {
-        wideScreen: window.wideScreen
+    globalDrawer: MacSidebar {
+        chrome: chrome
     }
 
     onCurrentTopLevelChanged: {

@@ -31,6 +31,7 @@ add_executable(plasma-discover ${plasma_discover_SRCS}
     UnityLauncher.cpp
     ReadFile.cpp
     PowerManagementInterface.cpp
+    StoreChrome.cpp
 
     DiscoverObject.h
     DiscoverDeclarativePlugin.h

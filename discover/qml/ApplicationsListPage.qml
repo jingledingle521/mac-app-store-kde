@@ -30,7 +30,7 @@ DiscoverPage {
     property alias allBackends: appsModel.allBackends
     property alias count: appsView.count
     property alias listHeader: appsView.header
-    property alias listHeaderPositioning: appsView.headerPositioning
+    property int listHeaderPositioning: ListView.InlineHeader // unused: a GridView here
     property string sortProperty: "appsListPageSorting"
     property bool showRating: true
     property bool showSize: false
@@ -41,7 +41,8 @@ DiscoverPage {
     readonly property Discover.Category categoryObject: Discover.CategoryModel.get(page.category)
 
     property bool canCategorize: false
-    readonly property bool categorize: canCategorize && categorizeAction.checked
+    // App Store: the apps are a grid, which can't group them by type.
+    readonly property bool categorize: false
 
     function stripHtml(input) {
         var regex = /(<([^>]+)>)/ig
@@ -50,28 +51,15 @@ DiscoverPage {
 
     property string name: categoryObject?.name ?? ""
 
+    // App Store: the category's name, or what was searched for, as a
+    // large title above the apps (macOwnTitle: not in the toolbar too).
     title: {
-        const count = appsModel.count;
-        if (search.length > 0 && count.number > 0) {
-            if (count.valid) {
-                return i18np("Search: %2 - %3 item", "Search: %2 - %3 items", count.number, stripHtml(search), count.string)
-            } else {
-                return i18n("Search: %1", stripHtml(search))
-            }
-        } else if (name.length > 0 && count.number > 0) {
-            if (count.valid) {
-                return i18np("%2 - %1 item", "%2 - %1 items", count.number, name)
-            } else {
-                return name
-            }
-        } else {
-            if (count.valid && count.number > 0) {
-                return i18np("Search - %1 item", "Search - %1 items", count.number)
-            } else {
-                return i18n("Search")
-            }
+        if (search.length > 0) {
+            return i18nc("@title %1 is what was searched for", "Results for “%1”", stripHtml(search));
         }
+        return name.length > 0 ? name : i18n("Search");
     }
+    readonly property bool macOwnTitle: true
 
     signal clearSearch()
 
@@ -170,11 +158,11 @@ DiscoverPage {
             }
             Kirigami.Action {
                 separator: true
-                visible: page.canCategorize
+                visible: false
             }
             Kirigami.Action {
                 id: categorizeAction
-                visible: page.canCategorize
+                visible: false
                 text: i18nc("@info", "Group by Type")
                 checkable: true
                 checked: DiscoverApp.DiscoverSettings.installedPageCategorize
@@ -183,16 +171,37 @@ DiscoverPage {
         }
     ]
 
-    Kirigami.CardsListView {
+    // App Store: apps in columns, as macOS lists a category or a search.
+    GridView {
         id: appsView
-        footerPositioning: ListView.InlineFooter
+
+        // A grid isn't padded by the page; keep it off the sidebar.
+        readonly property real innerWidth: width - leftMargin - rightMargin
+        readonly property int columns: Math.max(1, Math.min(3, Math.floor(innerWidth / (Kirigami.Units.gridUnit * 14))))
+
+        leftMargin: Kirigami.Units.gridUnit * 1.5
+        rightMargin: Kirigami.Units.gridUnit * 1.5
+        cellWidth: Math.floor(innerWidth / columns)
+        cellHeight: Kirigami.Units.gridUnit * 4.6
         activeFocusOnTab: true
         currentIndex: -1
         focus: true
+        keyNavigationEnabled: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        header: Kirigami.Heading {
+            width: appsView.innerWidth
+            bottomPadding: Kirigami.Units.gridUnit
+            level: 1
+            font.weight: Font.Bold
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2.1
+            text: page.title
+            elide: Text.ElideRight
+        }
         footer: Item {
             id: appViewFooter
             height: appsModel.busy ? Kirigami.Units.gridUnit * 8 : Kirigami.Units.gridUnit
-            width: parent.width
+            width: appsView.innerWidth
         }
         onActiveFocusChanged: if (activeFocus && currentIndex === -1) {
             currentIndex = 0;
@@ -212,22 +221,20 @@ DiscoverPage {
             }
         }
 
-        delegate: ApplicationDelegate {
-            showRating: page.showRating
-            showSize: page.showSize
-        }
+        delegate: Item {
+            id: cell
+            required property int index
+            required property Discover.AbstractResource application
 
-        section {
-            property: page.categorize ? "categoryName" : ""
-            criteria: ViewSection.FullString
+            width: appsView.cellWidth
+            height: appsView.cellHeight
 
-            delegate: Kirigami.ListSectionHeader {
-                required property string section
-
-                topPadding: 0
-                width: appsView.width - appsView.leftMargin - appsView.rightMargin
-
-                label: section
+            MacAppRow {
+                anchors.fill: parent
+                anchors.rightMargin: (cell.index % appsView.columns) < appsView.columns - 1 ? Kirigami.Units.gridUnit * 1.5 : 0
+                application: cell.application
+                detail: page.showSize ? cell.application.sizeDescription : cell.application.comment
+                focus: appsView.currentIndex === cell.index
             }
         }
 

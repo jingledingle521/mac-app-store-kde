@@ -67,6 +67,7 @@
 #include "plasmauserfeedback.h"
 #endif
 #include "PowerManagementInterface.h"
+#include "StoreChrome.h"
 #include "RefreshNotifier.h"
 #include "discoversettings.h"
 #include <resources/ResourcesUpdatesModel.h>
@@ -123,6 +124,7 @@ DiscoverObject::DiscoverObject(const QVariantMap &initialProperties)
     qmlRegisterType<FeaturedModel>(uriApp, 1, 0, "FeaturedModel");
     qmlRegisterType<OdrsAppsModel>(uriApp, 1, 0, "OdrsAppsModel");
     qmlRegisterType<PowerManagementInterface>(uriApp, 1, 0, "PowerManagementInterface");
+    qmlRegisterType<StoreChrome>(uriApp, 1, 0, "StoreChrome");
 #ifdef WITH_FEEDBACK
     qmlRegisterSingletonType<PlasmaUserFeedback>(uriApp, 1, 0, "UserFeedbackSettings", [](QQmlEngine *engine, QJSEngine *) -> QObject * {
         auto r = new PlasmaUserFeedback(KSharedConfig::openConfig(QStringLiteral("PlasmaUserFeedback"), KConfig::NoGlobals));

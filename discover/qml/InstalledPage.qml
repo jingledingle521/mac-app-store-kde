@@ -11,11 +11,10 @@ ApplicationsListPage {
     sortProperty: "installedPageSorting"
     sortRole: DiscoverApp.DiscoverSettings.installedPageSorting
 
-    name: i18n("Installed")
+    // App Store: the account's apps, as the sidebar calls them.
+    name: i18nc("@title the apps you installed", "Your Apps")
     showRating: false
     showSize: true
     canNavigate: false
     canCategorize: true
-
-    listHeader: null
 }
