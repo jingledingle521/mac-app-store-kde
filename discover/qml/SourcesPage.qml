@@ -78,17 +78,31 @@ DiscoverPage {
 
         model: Discover.SourcesModel
         Component.onCompleted: Qt.callLater(Discover.SourcesModel.showingNow)
-        // App Store: start at the title while the sources load, not wherever
-        // the rows settle; until the user scrolls.
-        property bool userScrolled: false
-        onMovementStarted: userScrolled = true
-        // (Sources load above the first ones too, and the list keeps what's
-        // on screen in place by moving its origin.)
-        onOriginYChanged: if (!userScrolled) {
-            contentY = originY;
+        // App Store: start at the top while the sources load, not wherever
+        // the rows settle. Sources load above the first ones too, and the
+        // list keeps what's on screen in place by moving its origin. Only
+        // while loading (until the rows stop arriving), and never once the
+        // user has scrolled: by wheel too, which moves contentY directly.
+        property bool pinnedToTop: true
+        function keepAtTop() {
+            if (pinnedToTop && contentY !== originY) {
+                contentY = originY;
+            }
         }
-        onContentHeightChanged: if (!userScrolled) {
-            contentY = originY;
+        onOriginYChanged: keepAtTop()
+        onContentHeightChanged: keepAtTop()
+        onCountChanged: if (pinnedToTop) {
+            settleTimer.restart();
+        }
+        onMovementStarted: pinnedToTop = false
+        onContentYChanged: if (Math.abs(contentY - originY) > 1) {
+            pinnedToTop = false;
+        }
+        Timer {
+            id: settleTimer
+            interval: 1500
+            running: true
+            onTriggered: sourcesView.pinnedToTop = false
         }
         currentIndex: -1
         pixelAligned: true
