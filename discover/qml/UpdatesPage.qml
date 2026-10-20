@@ -12,6 +12,8 @@ DiscoverPage {
     id: page
 
     title: i18n("Updates")
+    // App Store: the title is drawn large in the list (macOS's).
+    readonly property bool macOwnTitle: true
 
     property string footerLabel: ""
     property int footerProgress: 0
@@ -248,7 +250,9 @@ DiscoverPage {
         QQC2.ToolBar {
             id: footerToolbar
             Layout.fillWidth: true
-            visible: (updateModel.totalUpdatesCount > 0 && resourcesUpdatesModel.isProgressing) || (!resourcesUpdatesModel.isFetching && updateModel.hasUpdates)
+            // App Store: only while installing (Update All and the total size
+            // are in the list's header).
+            visible: updateModel.totalUpdatesCount > 0 && resourcesUpdatesModel.isProgressing
 
             position: QQC2.ToolBar.Footer
 
@@ -299,12 +303,11 @@ DiscoverPage {
                     }
                 }
 
-                QQC2.Label {
-                    Layout.fillWidth: true
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
-                    horizontalAlignment: Text.AlignRight
-                    text: i18n("Total size: %1", updateModel.updateSize)
-                    elide: Text.ElideLeft
+                QQC2.ToolButton {
+                    icon.name: "dialog-cancel"
+                    text: cancelUpdateAction.text
+                    enabled: cancelUpdateAction.enabled
+                    onClicked: cancelUpdateAction.trigger()
                 }
             }
         }
@@ -372,6 +375,78 @@ DiscoverPage {
     }
     ListView {
         id: updatesView
+
+        // App Store: a list isn't padded by the page; keep it off the sidebar.
+        readonly property real innerWidth: width - leftMargin - rightMargin
+        leftMargin: Kirigami.Units.gridUnit * 1.5
+        rightMargin: Kirigami.Units.gridUnit * 1.5
+
+        header: ColumnLayout {
+            width: updatesView.innerWidth
+            spacing: Kirigami.Units.largeSpacing
+
+            Kirigami.Heading {
+                Layout.fillWidth: true
+                level: 1
+                font.weight: Font.Bold
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2.1
+                text: page.title
+                elide: Text.ElideRight
+            }
+            // "Available", what it comes to, and Update All.
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.bottomMargin: Kirigami.Units.largeSpacing
+                visible: updateModel.hasUpdates && !resourcesUpdatesModel.isFetching
+                spacing: Kirigami.Units.largeSpacing
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Kirigami.Heading {
+                        level: 2
+                        font.weight: Font.Bold
+                        text: i18nc("@title updates that can be installed", "Available")
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        opacity: 0.6
+                        elide: Text.ElideRight
+                        text: i18ncp("@info %2 is a size", "%1 update · %2", "%1 updates · %2", updateModel.toUpdateCount, updateModel.updateSize)
+                    }
+                }
+                QQC2.Button {
+                    flat: true
+                    visible: updateModel.totalUpdatesCount > 1 && !resourcesUpdatesModel.isProgressing
+                    text: page.unselected > 0 ? i18n("Select All") : i18n("Select None")
+                    onClicked: page.unselected > 0 ? updateModel.checkAll() : updateModel.uncheckAll()
+                }
+                // macOS's accent pill.
+                QQC2.AbstractButton {
+                    id: updateAllButton
+                    visible: updateAction.visible
+                    enabled: updateAction.enabled
+                    text: updateAction.text
+                    onClicked: updateAction.trigger()
+                    leftPadding: Kirigami.Units.gridUnit
+                    rightPadding: Kirigami.Units.gridUnit
+                    topPadding: Kirigami.Units.smallSpacing * 1.2
+                    bottomPadding: Kirigami.Units.smallSpacing * 1.2
+                    opacity: enabled ? 1 : 0.5
+                    background: Rectangle {
+                        radius: height / 2
+                        color: updateAllButton.down ? Qt.darker(Kirigami.Theme.focusColor, 1.15) : Kirigami.Theme.focusColor
+                    }
+                    contentItem: QQC2.Label {
+                        text: updateAllButton.text
+                        font.weight: Font.Bold
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+            }
+        }
+
         currentIndex: -1
         reuseItems: true
         clip: true
@@ -394,11 +469,15 @@ DiscoverPage {
 
         section {
             property: "section"
-            delegate: Kirigami.ListSectionHeader {
+            delegate: QQC2.Label {
                 required property string section
 
-                width: updatesView.width
-                label: section
+                width: updatesView.innerWidth
+                topPadding: Kirigami.Units.largeSpacing
+                bottomPadding: Kirigami.Units.smallSpacing
+                text: section
+                font.weight: Font.DemiBold
+                opacity: 0.6
             }
         }
 
@@ -410,9 +489,23 @@ DiscoverPage {
             required property int index
             required property bool extended
 
-            width: updatesView.width
+            width: updatesView.innerWidth
+            leftPadding: 0
+            rightPadding: 0
 
             highlighted: false
+            // App Store: no row highlight; a hairline under each.
+            background: Rectangle {
+                color: "transparent"
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.leftMargin: delegateLayout.extraContentLeadingMargin
+                    anchors.right: parent.right
+                    height: 1
+                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                }
+            }
             focus: ListView.isCurrentItem
             activeFocusOnTab: ListView.isCurrentItem
             checked: itemChecked.checked
@@ -484,8 +577,8 @@ DiscoverPage {
 
                     Kirigami.Icon {
                         id: itemIcon
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 2.6
+                        Layout.preferredHeight: Layout.preferredWidth
                         source: listItem.model.decoration
                         selected: listItem.down
                         smooth: true
@@ -500,10 +593,10 @@ DiscoverPage {
                         spacing: 0
 
                         // App name
-                        Kirigami.Heading {
+                        QQC2.Label {
                             Layout.fillWidth: true
                             text: listItem.model.display
-                            level: 3
+                            font.weight: Font.DemiBold
                             elide: Text.ElideRight
                             color: listItem.down ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
@@ -513,8 +606,9 @@ DiscoverPage {
                             Layout.fillWidth: true
                             elide: truncated ? Text.ElideLeft : Text.ElideRight
                             text: listItem.model.resource?.upgradeText ?? ""
+                            font: Kirigami.Theme.smallFont
                             color: listItem.down ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
-                            opacity: 0.75
+                            opacity: 0.6
                         }
                     }
 
@@ -644,7 +738,7 @@ DiscoverPage {
             name: "fetching"
             PropertyChanges { page.footerLabel: i18nc("@info", "Fetching updates…") }
             PropertyChanges { page.footerProgress: Discover.ResourcesModel.fetchingUpdatesProgress }
-            PropertyChanges { page.actions: [ updateAction, refreshAction ] }
+            PropertyChanges { page.actions: [ refreshAction ] }
             PropertyChanges { page.busy: true }
             PropertyChanges { statusLabel.progressBar.visible: true }
             PropertyChanges { updatesView.opacity: 0 }
@@ -661,7 +755,7 @@ DiscoverPage {
             // On mobile, we want "Update" to be the primary action so it's in
             // the center, but on desktop this feels a bit awkward and it would
             // be better to have "Update" be the right-most action
-            PropertyChanges { page.actions: [ updateAction, refreshAction ] }
+            PropertyChanges { page.actions: [ refreshAction ] }
             PropertyChanges { statusLabel.visible: false }
         },
         State {

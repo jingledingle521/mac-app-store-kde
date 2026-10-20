@@ -16,6 +16,8 @@ DiscoverPage {
 
     clip: true
     title: i18n("Settings")
+    // App Store: the title is drawn large in the list (macOS's).
+    readonly property bool macOwnTitle: true
 
     Kirigami.Action {
         id: configureUpdatesAction
@@ -30,6 +32,20 @@ DiscoverPage {
 
     header: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
+
+        // App Store: the large title, above the list (sources that load
+        // later are inserted at the list's top and would slide under a
+        // list header).
+        Kirigami.Heading {
+            Layout.fillWidth: true
+            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+            Layout.rightMargin: Kirigami.Units.gridUnit * 1.5
+            level: 1
+            font.weight: Font.Bold
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2.1
+            text: page.title
+            elide: Text.ElideRight
+        }
 
         Repeater {
             model: Discover.SourcesModel.sources
@@ -54,8 +70,26 @@ DiscoverPage {
 
     ListView {
         id: sourcesView
+
+        // App Store: a list isn't padded by the page; keep it off the sidebar.
+        readonly property real innerWidth: width - leftMargin - rightMargin
+        leftMargin: Kirigami.Units.gridUnit * 1.5
+        rightMargin: Kirigami.Units.gridUnit * 1.5
+
         model: Discover.SourcesModel
         Component.onCompleted: Qt.callLater(Discover.SourcesModel.showingNow)
+        // App Store: start at the title while the sources load, not wherever
+        // the rows settle; until the user scrolls.
+        property bool userScrolled: false
+        onMovementStarted: userScrolled = true
+        // (Sources load above the first ones too, and the list keeps what's
+        // on screen in place by moving its origin.)
+        onOriginYChanged: if (!userScrolled) {
+            contentY = originY;
+        }
+        onContentHeightChanged: if (!userScrolled) {
+            contentY = originY;
+        }
         currentIndex: -1
         pixelAligned: true
         section.property: "sourceName"
@@ -64,13 +98,16 @@ DiscoverPage {
 
             required property string section
 
-            height: Math.ceil(Math.max(Kirigami.Units.gridUnit * 2.5, contentItem.implicitHeight))
+            height: Math.ceil(Math.max(Kirigami.Units.gridUnit * 2.5, contentItem.implicitHeight)) + topPadding
+            topPadding: Kirigami.Units.gridUnit
+            leftPadding: Kirigami.Units.smallSpacing
+            rightPadding: 0
 
             readonly property Discover.AbstractSourcesBackend backend: Discover.SourcesModel.sourcesBackendByName(section)
             readonly property Discover.AbstractResourcesBackend resourcesBackend: backend.resourcesBackend
             readonly property bool isDefault: Discover.ResourcesModel.currentApplicationBackend === resourcesBackend
 
-            width: sourcesView.width
+            width: sourcesView.innerWidth
 
             Connections {
                 target: backendItem.backend
@@ -93,7 +130,7 @@ DiscoverPage {
                 Kirigami.Heading {
                     text: resourcesBackend.displayName
                     level: 3
-                    font.weight: backendItem.isDefault ? Font.Bold : Font.Normal
+                    font.weight: Font.Bold
                 }
 
                 Kirigami.ActionToolBar {
@@ -106,10 +143,9 @@ DiscoverPage {
 
                         visible: backendItem.isDefault
                         displayHint: Kirigami.DisplayHint.KeepVisible
-                        displayComponent: Kirigami.Heading {
+                        displayComponent: QQC2.Label {
                             text: i18n("Default Source")
-                            level: 3
-                            font.weight: Font.Bold
+                            opacity: 0.6
                         }
                     }
 
@@ -228,7 +264,7 @@ DiscoverPage {
             }
         }
 
-        delegate: Kirigami.SwipeListItem {
+        delegate: QQC2.ItemDelegate {
             id: delegate
 
             required property int index
@@ -236,13 +272,43 @@ DiscoverPage {
 
             enabled: model.display.length > 0 && model.enabled
             highlighted: ListView.isCurrentItem
-            supportsMouseEvents: false
             visible: model.display.indexOf(page.search) >= 0
             height: visible ? implicitHeight : 0
+            width: sourcesView.innerWidth
+            leftPadding: Kirigami.Units.largeSpacing
+            rightPadding: Kirigami.Units.largeSpacing
+            topInset: 0
+            bottomInset: 0
+            leftInset: 0
+            rightInset: 0
+
+            // App Store: each source's rows share a rounded panel, as macOS's
+            // settings group them; hairlines between rows.
+            readonly property bool firstInGroup: ListView.previousSection !== ListView.section
+            readonly property bool lastInGroup: ListView.nextSection !== ListView.section
+            background: Kirigami.ShadowedRectangle {
+                readonly property real r: 10
+                color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.05)
+                corners.topLeftRadius: delegate.firstInGroup ? r : 0
+                corners.topRightRadius: delegate.firstInGroup ? r : 0
+                corners.bottomLeftRadius: delegate.lastInGroup ? r : 0
+                corners.bottomRightRadius: delegate.lastInGroup ? r : 0
+                Rectangle {
+                    visible: !delegate.lastInGroup
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: Kirigami.Units.largeSpacing
+                    anchors.rightMargin: Kirigami.Units.largeSpacing
+                    height: 1
+                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.08)
+                }
+            }
 
             Keys.onReturnPressed: enabledBox.clicked()
             Keys.onSpacePressed: enabledBox.clicked()
-            actions: [
+            // App Store: the row's actions in a ⋯ menu (macOS's), not swiped in.
+            readonly property list<Kirigami.Action> rowActions: [
                 Kirigami.Action {
                     icon.name: "go-up"
                     tooltip: i18n("Increase priority")
@@ -289,9 +355,51 @@ DiscoverPage {
             ]
 
             contentItem: RowLayout {
-                spacing: Kirigami.Units.smallSpacing
+                spacing: Kirigami.Units.largeSpacing
 
-                QQC2.CheckBox {
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Kirigami.Units.smallSpacing
+                    Layout.bottomMargin: Kirigami.Units.smallSpacing
+                    spacing: 0
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        text: delegate.model.display
+                        elide: Text.ElideRight
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        visible: text.length > 0
+                        text: delegate.model.toolTip ?? ""
+                        font: Kirigami.Theme.smallFont
+                        opacity: 0.6
+                        elide: Text.ElideRight
+                    }
+                }
+                QQC2.ToolButton {
+                    id: moreButton
+                    visible: delegate.rowActions.some(action => action.visible)
+                    icon.name: "overflow-menu"
+                    display: QQC2.AbstractButton.IconOnly
+                    text: i18nc("@action:button", "More")
+                    onClicked: rowMenu.popup(moreButton, 0, moreButton.height)
+                    QQC2.Menu {
+                        id: rowMenu
+                        Repeater {
+                            model: delegate.rowActions
+                            delegate: QQC2.MenuItem {
+                                required property Kirigami.Action modelData
+                                visible: modelData?.visible ?? false
+                                height: visible ? implicitHeight : 0
+                                enabled: modelData?.enabled ?? false
+                                icon.name: modelData?.icon.name ?? ""
+                                text: modelData?.tooltip ?? ""
+                                onTriggered: modelData?.trigger()
+                            }
+                        }
+                    }
+                }
+                QQC2.Switch {
                     id: enabledBox
 
                     readonly property var idx: index !== -1 ? sourcesView.model.index(index, 0) : null
@@ -306,18 +414,12 @@ DiscoverPage {
                     QQC2.ToolTip.visible: hovered
                     QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                 }
-                QQC2.Label {
-                    text: delegate.model.display + (delegate.model.toolTip ? " - <i>" + delegate.model.toolTip + "</i>" : "")
-                    elide: Text.ElideRight
-                    textFormat: Text.StyledText
-                    Layout.fillWidth: true
-                }
             }
         }
 
         footer: ColumnLayout {
             spacing: 0
-            width: ListView.view.width
+            width: sourcesView.innerWidth
 
             Kirigami.ListSectionHeader {
                 Layout.fillWidth: true

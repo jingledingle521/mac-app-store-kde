@@ -16,6 +16,7 @@
 
 // Qt includes
 #include "discover_debug.h"
+#include <QIcon>
 #include <QClipboard>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -694,6 +695,11 @@ QUrl DiscoverObject::searchUrl(const QString &searchText)
         return filterData.uri();
     }
     return {};
+}
+
+bool DiscoverObject::hasThemeIcon(const QString &name) const
+{
+    return !name.isEmpty() && QIcon::hasThemeIcon(name);
 }
 
 QString DiscoverObject::mimeTypeComment(const QString &mimeTypeName)

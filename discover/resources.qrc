@@ -6,6 +6,8 @@
     <file>qml/MacSidebarRow.qml</file>
     <file>qml/MacStoplights.qml</file>
     <file>qml/MacToolbar.qml</file>
+    <file>qml/MacTour.qml</file>
+    <file>qml/MacAppIcon.qml</file>
     <file>qml/MacGetButton.qml</file>
     <file>qml/MacAppRow.qml</file>
     <file>qml/MacShelf.qml</file>

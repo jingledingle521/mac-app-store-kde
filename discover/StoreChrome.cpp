@@ -197,6 +197,23 @@ void StoreChrome::close()
     }
 }
 
+QString StoreChrome::testTour() const
+{
+    return qEnvironmentVariable("MAC_TEST_TOUR");
+}
+
+QStringList StoreChrome::testTourOnly() const
+{
+    return qEnvironmentVariable("MAC_TEST_TOUR_ONLY").split(QLatin1Char(','), Qt::SkipEmptyParts);
+}
+
+void StoreChrome::snap(const QString &name)
+{
+    if (m_window && !testTour().isEmpty()) {
+        m_window->grabWindow().save(testTour() + QLatin1Char('/') + name + QStringLiteral(".png"));
+    }
+}
+
 Qt::Edges StoreChrome::edgesAt(const QPointF &pos) const
 {
     Qt::Edges edges;

@@ -237,8 +237,13 @@ void FlatpakResource::resolveIcon()
             case AppStream::Icon::KindCached: {
                 const QString path = icon.url().toLocalFile();
                 if (QDir::isRelativePath(path)) {
-                    const QString appstreamLocation =
-                        installationPath() + "/appstream/"_L1 + origin() + '/'_L1 + QString::fromUtf8(flatpak_get_default_arch()) + "/active/icons/"_L1;
+                    const QString archLocation = installationPath() + "/appstream/"_L1 + origin() + '/'_L1 + QString::fromUtf8(flatpak_get_default_arch());
+                    // App Store: OCI remotes (Fedora's) keep their icons
+                    // beside the metadata, with no "active" checkout.
+                    QString appstreamLocation = archLocation + "/active/icons/"_L1;
+                    if (!QFileInfo::exists(appstreamLocation)) {
+                        appstreamLocation = archLocation + "/icons/"_L1;
+                    }
                     QDirIterator dit(appstreamLocation, QDirIterator::Subdirectories);
                     while (dit.hasNext()) {
                         const auto currentPath = dit.next();

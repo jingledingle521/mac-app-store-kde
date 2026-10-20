@@ -38,12 +38,11 @@ MouseArea {
         anchors.fill: parent
         spacing: Kirigami.Units.largeSpacing
 
-        Kirigami.Icon {
+        MacAppIcon {
             id: icon
             Layout.preferredWidth: Kirigami.Units.gridUnit * 3.2
             Layout.preferredHeight: Layout.preferredWidth
-            source: row.application.icon
-            animated: false
+            application: row.application
         }
 
         ColumnLayout {

@@ -47,12 +47,12 @@ Kirigami.Padding {
             Layout.fillWidth: true
             spacing: Kirigami.Units.gridUnit * 1.2
 
-            Kirigami.Icon {
+            MacAppIcon {
                 id: appIcon
                 Layout.alignment: Qt.AlignTop
                 implicitWidth: Kirigami.Units.gridUnit * 7
                 implicitHeight: implicitWidth
-                source: fullComponent.application.icon
+                application: fullComponent.application
             }
 
             ColumnLayout {

@@ -48,6 +48,8 @@ public:
     Q_INVOKABLE void copyTextToClipboard(const QString &text);
     Q_INVOKABLE QUrl searchUrl(const QString &searchText);
     Q_INVOKABLE QString mimeTypeComment(const QString &mimeTypeName);
+    /** App Store: whether the icon theme has an icon called @p name. */
+    Q_INVOKABLE bool hasThemeIcon(const QString &name) const;
 
     QString describeSources() const;
     Q_SCRIPTABLE void restore();

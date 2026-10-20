@@ -568,6 +568,15 @@ Kirigami.ApplicationWindow {
         chrome: chrome
     }
 
+    // MAC_TEST_TOUR=<dir>: pictures of the main pages (see MacTour).
+    Loader {
+        active: chrome.testTour() !== ""
+        sourceComponent: MacTour {
+            chrome: chrome
+            drawer: window.globalDrawer
+        }
+    }
+
     onCurrentTopLevelChanged: {
         pageStack.clear();
         if (currentTopLevel) {

@@ -20,7 +20,9 @@
 #include <LazyIconResolver.h>
 #include <PackageKit/Daemon>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QIcon>
 #include <QProcess>
 #include <QStandardPaths>
@@ -66,6 +68,33 @@ QString AppPackageKitResource::longDescription()
     return PackageKitResource::longDescription();
 }
 
+// App Store: AppStream sometimes hands back a cached icon as a bare file
+// name (after its cache is rebuilt); look for it in the catalogs' icon
+// folders (<dir>/<origin>/<W>x<H>/<name>) instead.
+static QString findCachedIcon(const AppStream::Icon &icon)
+{
+    const QString path = icon.url().toLocalFile();
+    if (!path.isEmpty() && QFileInfo::exists(path)) {
+        return path;
+    }
+    const QString name = QFileInfo(path.isEmpty() ? icon.url().toString() : path).fileName();
+    if (name.isEmpty()) {
+        return {};
+    }
+    const QString size = u"%1x%2"_s.arg(icon.width()).arg(icon.height());
+    static const QStringList roots = {u"/usr/share/swcatalog/icons"_s, u"/var/cache/swcatalog/icons"_s, u"/usr/share/app-info/icons"_s, u"/var/cache/app-info/icons"_s};
+    for (const QString &root : roots) {
+        const auto origins = QDir(root).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString &origin : origins) {
+            const QString candidate = root + u'/' + origin + u'/' + size + u'/' + name;
+            if (QFileInfo::exists(candidate)) {
+                return candidate;
+            }
+        }
+    }
+    return {};
+}
+
 static QIcon componentIcon(const AppStream::Component &comp)
 {
     QIcon ret;
@@ -76,7 +105,9 @@ static QIcon componentIcon(const AppStream::Component &comp)
             ret.addFile(icon.url().toLocalFile(), icon.size());
             break;
         case AppStream::Icon::KindCached:
-            ret.addFile(icon.url().toLocalFile(), icon.size());
+            if (const QString path = findCachedIcon(icon); !path.isEmpty()) {
+                ret.addFile(path, icon.size());
+            }
             break;
         case AppStream::Icon::KindStock: {
             if (AppStreamUtils::kIconLoaderHasIcon(icon.name())) {

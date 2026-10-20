@@ -36,6 +36,12 @@ Kirigami.OverlayDrawer {
         forceSearchFieldFocus();
     }
 
+    // Searches for `text`, as if typed and Return pressed.
+    function search(text) {
+        searchField.text = text;
+        searchField.accepted();
+    }
+
     function forceSearchFieldFocus() {
         searchField.forceActiveFocus();
     }
@@ -53,7 +59,7 @@ Kirigami.OverlayDrawer {
           run: () => { window.currentTopLevel = window.topUpdateComp; } },
     ]
 
-    function open(section) {
+    function openSection(section) {
         selectedKey = section.key;
         if (section.category) {
             Navigation.openCategory(Discover.CategoryModel.findCategoryByName(section.category));
@@ -62,20 +68,40 @@ Kirigami.OverlayDrawer {
         }
     }
 
-    // Follow pages opened from elsewhere (Updates from a notification…).
+    // Follow pages opened from elsewhere (a link, the command line, Updates
+    // from a notification…): the page at the bottom of the stack decides.
+    function sync() {
+        const first = window.pageStack.items[0] ?? null;
+        if (first && first.hasOwnProperty("categoryObject")) {
+            // A list of apps: its themed section, else Categories; a search
+            // selects nothing.
+            const cat = first.categoryObject;
+            const section = cat ? drawer.sections.find(s => s.category && Discover.CategoryModel.get(Discover.CategoryModel.findCategoryByName(s.category)) === cat) : null;
+            selectedKey = section ? section.key : cat ? "categories" : "";
+            return;
+        }
+        const keys = {
+            [window.topBrowsingComp]: "discover",
+            [window.topCategoriesComp]: "categories",
+            [window.topUpdateComp]: "updates",
+            [window.topInstalledComp]: "installed",
+            [window.topSourcesComp]: "sources",
+        };
+        selectedKey = keys[window.currentTopLevel] ?? "";
+    }
     Connections {
         target: window
         function onCurrentTopLevelChanged() {
-            const keys = {
-                [window.topBrowsingComp]: "discover",
-                [window.topCategoriesComp]: "categories",
-                [window.topUpdateComp]: "updates",
-                [window.topInstalledComp]: "installed",
-                [window.topSourcesComp]: "sources",
-            };
-            if (keys[window.currentTopLevel]) {
-                drawer.selectedKey = keys[window.currentTopLevel];
-            }
+            Qt.callLater(drawer.sync);
+        }
+    }
+    Connections {
+        target: window.pageStack
+        function onDepthChanged() {
+            Qt.callLater(drawer.sync);
+        }
+        function onCurrentItemChanged() {
+            Qt.callLater(drawer.sync);
         }
     }
 
@@ -132,7 +158,7 @@ Kirigami.OverlayDrawer {
                 }
                 if (currentSearchText === "" && (!curr || !curr.hasOwnProperty("search") || !curr.category)) {
                     if (drawer.selectedKey === "") {
-                        drawer.open(drawer.sections[0]);
+                        drawer.openSection(drawer.sections[0]);
                     }
                 } else if (!curr || !curr.hasOwnProperty("search")) {
                     Navigation.clearStack();
@@ -164,7 +190,7 @@ Kirigami.OverlayDrawer {
                 glyph: modelData.glyph
                 badge: modelData.badge && Discover.ResourcesModel.updatesCount > 0 ? Discover.ResourcesModel.updatesCount : 0
                 busy: modelData.badge === true && Discover.ResourcesModel.fetchingUpdatesProgress < 100
-                onClicked: drawer.open(modelData)
+                onClicked: drawer.openSection(modelData)
             }
         }
 

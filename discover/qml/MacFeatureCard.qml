@@ -94,11 +94,10 @@ MouseArea {
             Layout.fillWidth: true
             spacing: Kirigami.Units.largeSpacing
 
-            Kirigami.Icon {
+            MacAppIcon {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 2.8
                 Layout.preferredHeight: Layout.preferredWidth
-                source: card.application.icon
-                animated: false
+                application: card.application
             }
             ColumnLayout {
                 Layout.fillWidth: true

@@ -50,6 +50,13 @@ public:
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void close();
 
+    /** MAC_TEST_TOUR=<dir>: MacTour visits the pages and saves a picture
+     *  of each (snap) in <dir>, then quits. Empty when not touring. */
+    Q_INVOKABLE QString testTour() const;
+    /** MAC_TEST_TOUR_ONLY=<pictures,…>: just these (as named by the tour). */
+    Q_INVOKABLE QStringList testTourOnly() const;
+    Q_INVOKABLE void snap(const QString &name);
+
 Q_SIGNALS:
     void windowChanged();
     void sidebarWidthChanged();
